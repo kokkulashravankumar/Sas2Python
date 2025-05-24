@@ -1,0 +1,6 @@
+proc import datafile='data1.csv' out=data replace;
+run;
+
+proc print data=data1;
+run;
+

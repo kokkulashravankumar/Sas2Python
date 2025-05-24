@@ -1,0 +1,199 @@
+* PROGRAM: OOPCV1P.SAS;
+* DESCRIPTION: MAIN OOPC PROGRAM;
+
+%LET INPUTDIR     = c:\oopc_c\input;
+%LET PROGDIR      = c:\oopc_c\programs;
+%LET PBPDIR       = c:\oopc_c\pbp;
+%LET PLANFILEDIR  = c:\oopc_c\programs;
+%LET JSONDIR      = c:\oopc_c\programs;
+%LET OUTPUT       = c:\oopc_c\output;
+%LET JSONFILES    = c:\oopc_c\pbp;
+%LET JSONTEMP     = c:\oopc_c\pbptemp;
+%LET INPUTJSONDIR = c:\oopc_c\input\jsonlib;
+%LET JSONSQL      = c:\oopc_c\inputjson;
+
+%LET INPUT=INPUTPLAN;
+
+OPTIONS OBS = MAX NOCENTER MSGLEVEL = N SUMSIZE = 1000M BUFNO = 6
+   SORTPGM = SAS  NOSORTEQUALS THREADS = YES NOTES SPOOL;
+OPTIONS VALIDVARNAME=ANY;
+
+OPTIONS NOMPRINT NOSOURCE2;
+
+options pagesize=60 linesize=120 msglevel=i mprint source2 dkricond=warn dkrocond=warn;
+
+RUN;
+
+FILENAME IN0     "&INPUTDIR.";
+FILENAME J1      "&JSONSQL.";
+LIBNAME  IN1     "&INPUTDIR.";
+
+DATA _NULL_;
+RUNDATE = PUT(DATE(),YYMMDD10.);
+PUT "*****BEGIN OOPC RUN******";
+PUT RUNDATE=;
+TIME = time();
+PUT TIME = time10.2;
+RUN;
+
+*SET UP MACRO VARIABLES FOR YEARS;
+%LET YEAR1         = 2019;
+%LET YEAR2         = 2020;
+%LET RUNYEAR       = 2025;
+%LET MCBSYR1       = 'MCBS 19';
+%LET MCBSYR2       = 'MCBS 20';
+%LET PARTA_DEDUCT  = 1632;
+%LET PARTB_DEDUCT  = 240.00;
+%LET B1_DED_AMT=1632;
+%LET B1_COPAY_BGND_INT1=1;
+%LET B1_COPAY_BGND_INT2=61;
+%LET B1_COPAY_BGND_INT3=91;
+%LET B1_COPAY_ENDD_INT1=60;
+%LET B1_COPAY_ENDD_INT2=90;
+%LET B1_COPAY_ENDD_INT3=150;
+%LET B1_COPAY_AMT_INT1=0;
+%LET B1_COPAY_AMT_INT2=408;
+%LET B1_COPAY_AMT_INT3=816;
+%LET B2_COPAY_AMT_INT1=0;
+%LET B2_COPAY_AMT_INT2=204.00;
+%LET B2_COPAY_BGND_INT1=1;
+%LET B2_COPAY_BGND_INT2=21;
+%LET B2_COPAY_BGND_INT3=.;
+%LET B2_COPAY_ENDD_INT1=20;
+%LET B2_COPAY_ENDD_INT2=100;
+%LET B2_COPAY_ENDD_INT3=.;
+%LET MODVERSION=OOPC2024_Bid_Review_CMS_PartC.ZIP;
+%LET OACT_INFLATION_YEAR=2024;
+* CMS VERSION - UPDATE WITH EXTRACT DATE;
+%LET EXT_DATE=YYYYMMDD;
+
+%macro obsnvars(ds);
+   %global dset nvars nobs;
+   %let dset=&ds;
+   %let dsid = %sysfunc(open(&dset));
+   %if &dsid %then
+      %do;
+         %let nobs =%sysfunc(attrn(&dsid,NOBS));
+         %let nvars=%sysfunc(attrn(&dsid,NVARS));
+         %let rc = %sysfunc(close(&dsid));
+      %end;
+   %else
+      %put Open for data set &dset failed - %sysfunc(sysmsg());
+%mend obsnvars;
+
+LIBNAME JSONLIB "&INPUTJSONDIR.";
+PROC CIMPORT LIBRARY=JSONLIB FILE="&INPUTDIR.\OOPCLIB_PARTC.CPORT" MEMTYPE=ALL;
+RUN;
+
+%MACRO PLANS(JSONFILE,PLANFILE);
+
+  %IF "&JSONFILE" NE "" %THEN %DO;
+    DATA JSONFILE;
+      INFILE "&JSONFILE" TRUNCOVER;
+      INPUT @1 JSONFILE_NAME $CHAR500.;
+      CALL SYMPUT('JF',TRIM(LEFT(JSONFILE_NAME)));
+    RUN;
+  %END;
+  %ELSE %DO;
+    DATA JSONFILE;
+      STOP;
+    RUN;
+  %END;
+
+  DATA _NULL_;
+    RC=JSONPP("&JSONFILES.\&JF.","&JSONTEMP.\PP_&JF.");
+  RUN;
+
+  DATA _NULL_;
+    INFILE "&JSONTEMP.\PP_&JF.";
+
+    INPUT;
+
+    %INCLUDE "&INPUTDIR.\SHORTEN.TXT";
+
+    FILE "&JSONTEMP.\SH_PP_&JF.";
+    PUT _INFILE_;
+  RUN;
+
+  FILENAME JSONIN "&JSONTEMP.\SH_PP_&JF.";
+  FILENAME JSONMP "&INPUTDIR.\PARTC_AUTOMAP.TXT";
+  LIBNAME JSTEMP JSON FILEREF=JSONIN MAP=JSONMP;
+  
+  PROC DATASETS LIB = JSTEMP;
+  RUN;
+  QUIT;
+
+  PROC SQL NOPRINT;
+    SELECT COUNT(*) INTO :N
+    FROM DICTIONARY.TABLES
+    WHERE LIBNAME="JSTEMP" AND UPCASE(MEMNAME) ^= "ALLDATA";
+  QUIT;
+
+  PROC SQL NOPRINT;
+    SELECT MEMNAME INTO :DATA1 - :DATA%LEFT(&N)
+    FROM DICTIONARY.TABLES
+    WHERE LIBNAME="JSTEMP" AND UPCASE(MEMNAME) ^= "ALLDATA";
+  QUIT;
+
+  %MACRO JSONTOSAS;
+    %DO I=1 %TO &N.;
+      DATA JSONLIB.&&DATA&I;
+        SET JSTEMP.&&DATA&I;
+      RUN;
+    %END;
+  %MEND;
+
+  %JSONTOSAS;
+
+  %IF "&PLANFILE" NE "" %THEN %DO;
+    DATA MASTER_PLANFILE;
+    INFILE "&PLANFILE";
+    INPUT @1 HPLAN $CHAR11.;
+    RUN;
+  %END;
+  %ELSE %DO;
+    DATA MASTER_PLANFILE;
+    STOP;
+    RUN;
+  %END;
+
+%MEND;
+
+%PLANS(&JSONDIR\JSONFILE.TXT,&PLANFILEDIR\PLANFILE.TXT);
+RUN;
+
+DATA _NULL_;
+  CALL SYMPUT('NUM',TRIM(LEFT(PUT(NUMOBS,4.))));
+  STOP;
+  SET MASTER_PLANFILE NOBS=NUMOBS;
+  STOP;
+RUN;
+
+%INCLUDE IN0(OOPCV1M.SAS)/SOURCE2;
+run;
+
+data _null_;
+  ddate = put(date(),YYMMDDN8.);
+  put ddate=;
+  call symput('file_date', trim(left(ddate)));
+run;
+
+%OOPCV1M(RUNYEAR           =2025,
+         INP               =IN1.PERSON,
+         INC               =IN1.UTILIZATION,
+         CATEG             =IN1.CATEGORY,
+         PBP               =&PBPDIR,
+         PLANFILE          =&PLANFILEDIR\PLANFILE.TXT,
+         OOPC              =&OUTPUT.\OOPC_RUN&file_date..xlsx);
+run;
+
+PROC DATASETS LIBRARY=JSONLIB KILL;
+RUN;
+QUIT;
+DATA _NULL_;
+RUNDATE = PUT(DATE(),YYMMDD10.);
+PUT "*****ENDED OOPC RUN******";
+PUT RUNDATE=;
+TIME = time();
+PUT TIME = time10.2;
+RUN;

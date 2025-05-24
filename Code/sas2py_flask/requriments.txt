@@ -1,0 +1,6 @@
+pandas
+numpy
+pandasql
+hurry.filesize
+Flask
+more-itertools

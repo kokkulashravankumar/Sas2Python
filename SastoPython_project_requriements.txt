@@ -1,0 +1,40 @@
+1.if we convert to python the jupyter is not problem
+2.sas studio should replace with jupyter for viszalation purpose
+    this job will be done with aws glue
+
+Get Code from git
+   -basic count
+   -no of proc & No of lines,no of custom function
+   -No of out of box function.No of complete Sql statements within sql statements
+    how many sql statements(function
+  or
+export text file the do same phrasing 
+
+sever side extract the configuration & 
+    get the static from server get runtime
+
+
+1.code scanner
+2.other solution
+SonarQube.genai-codelmama,udf
+
+encrpeted file 
+udf custom functions
+synatactic ,lenght of code
+functions,syntax,lenght of code.
+producer start and end
+lenght of producer
+nested functions
+
+
+
+
+
+
+
+for my understanding:
+-code should support 
+-all target
+-fexlbility like Srikanth sir
+
+

@@ -1,0 +1,33 @@
+proc import out=material_master
+    datafile="./data1.csv"
+    dbms=csv
+    replace;
+    getnames=YES;
+run;
+
+proc print data = material_master;
+
+proc sort data=material_master;
+    by Material_ID;
+run;
+proc print data = material_master;
+
+proc sort data=material_master;
+    by Material_ID Unit_Selling_Price;
+run;
+proc print data = material_master;
+
+proc sort data=material_master;
+    by Material_ID descending Unit_Selling_Price Unit_Cost;
+run;
+proc print data = material_master;
+
+proc sort data=material_master nodupkey;
+    by Unit_Cost;
+run;
+proc print data = material_master;
+
+proc sort data=material_master (keep=Material_ID) nodupkey out=test2;
+    by Material_ID;
+run;
+proc print data = material_master;

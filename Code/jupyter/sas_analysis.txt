@@ -1,0 +1,16 @@
+
+        Total PROC procedures: 13
+        Total DATA steps: 17
+        Total lines: 275
+        Custom UDFs: 1
+        Built-in SAS functions: 3
+        SQL statements: 7 (including 0 nested)
+
+        PROC Procedure Usage:
+        PROC SORT: 4
+PROC CONTENTS: 2
+PROC SQL: 7
+
+        DATA Step Usage:
+        DATA: 17
+        

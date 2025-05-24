@@ -1,0 +1,746 @@
+
+proc import out=material_master
+    datafile="./data1.csv"
+    dbms=csv
+    replace;
+    getnames=YES;
+proc describe;
+run;
+
+proc import out=monthly_txn
+    datafile="./data2.csv"
+    dbms=csv
+    replace;
+    getnames=YES;
+run;
+
+proc print data=material_master;
+
+proc print data=monthly_txn;
+
+libname total_sale_amount xlsx './total_sale_amount.xlsx';
+proc sql;
+	title 'find total sale amount';
+	create table total_sale_amount as
+	select Month, sum(Quantity_Sold*Unit_Selling_Price) as total_sold from material_master, monthly_txn where material_master.Material_ID=monthly_txn.Material_ID group by Month;
+
+libname total_profit_amount xlsx './total_profit_amount.xlsx';	
+proc sql;
+	title 'find total profit';
+	create table total_profit_amount as
+	select Month, sum(Quantity_Sold*(Unit_Selling_Price-Unit_Cost)) as total_profit from material_master, monthly_txn where material_master.Material_ID=monthly_txn.Material_ID group by Month;	
+
+proc export data=total_sale_amount
+   outfile="./total_sale_amount.txt"
+   dbms=dlm replace;
+   delimiter=',';
+ run;
+ 
+proc export data=total_profit_amount
+   outfile="./total_profit_amount.txt"
+   dbms=dlm replace;
+   delimiter=',';
+ run;
+
+PROC MEANS DATA=material_master;
+var Unit_Selling_Price;
+RUN;
+
+
+proc print data=output_material_master;
+run
+PROC TRANSPOSE DATA=material_master out=transposed_material_master;
+RUN;
+proc freq data=material_master;
+	tables Material_ID;
+run;
+proc print data=frequency_dataframe;
+run;
+PROC COMPARE BASE = material_master , COMPARE = transposed_material_master;
+
+RUN;
+proc print data=compare.report();
+
+proc contents data = "./data2.csv" out = "monthly_txn"
+run;
+proc print data=monthly_txn;
+
+
+libname la b './testing';
+proc datasets lib = la;
+run;
+
+proc print data = dataframe;
+
+proc summary data = "./data1.csv";
+      class Material_ID Unit_Selling_Price;
+      var Material_ID Unit_Selling_Price Unit_Cost;
+   output out = out_dataframe;
+run;
+
+proc print data=out_dataframe;
+
+proc summary data = "./data1.csv";
+      var Material_ID Unit_Selling_Price Unit_Cost;
+      output out = out_dataframe;
+run;
+
+proc print data = out_dataframe;
+
+Proc Rank Data = './data1.csv' Out = 'Out_Testing';
+Var Unit_Selling_Price;
+Ranks hieght_ranked;
+Run;
+proc print data = Out_Testing;
+
+Proc Rank Data = './data1.csv' Out = 'Out_Testing' Ties = 'min';
+Var Unit_Selling_Price;
+Ranks hieght_ranked;
+Run;
+proc print data = Out_Testing;
+
+
+Proc Rank Data = './data1.csv' Out = 'Out_Testing' Ties = 'max';
+Var Unit_Selling_Price;
+Ranks hieght_ranked;
+BY Material_ID
+Run;
+proc print data = Out_Testing;
+
+proc tabluate data = './cars.txt';
+class Origin Type;
+tables Origin;
+run;
+proc print data = dataframe;
+
+proc tabluate data = './cars.txt';
+class Origin Type;
+tables Origin,Type;
+run;
+
+proc print data = dataframe;
+
+
+proc tabluate data = './cars.txt';
+class Origin Type;
+tables Origin*Type;
+run;
+proc print data = dataframe;
+
+proc tabluate data = './cars.txt';
+class Origin Type;
+tables Type all='Grand_totalvalues',Origin;
+run;
+proc print data = dataframe;
+
+
+proc tabluate data = './cars.txt';
+class Origin Type;
+var MSRP;
+tables Type,Origin*msrp(sum);
+run;
+proc print data = dataframe;
+
+proc tabluate data = './cars.txt';
+class Origin Type;
+var MSRP;
+tables Type,Origin*msrp(sum);
+run;
+proc print data = dataframe;
+
+proc tabluate data = './cars.txt';
+class Origin Type DriveTrain;
+var MSRP;
+tables Origin*Type,DriveTrain*MSRP*(n sum mean);
+run;
+
+proc print data = dataframe;
+
+proc tabluate data = './cars.txt';
+class Origin Type DriveTrain;
+var MSRP;
+tables Origin*Type all = "Grand_total",DriveTrain*msrp*(n sum mean);
+run;
+proc print data = dataframe;
+
+proc tabluate data = './cars.txt';
+class origin type DriveTrain;
+var MSRP,Invoice;
+tables Origin*Type all = "Grand_total",DriveTrain*msrp*(n sum mean);
+run;
+proc print data = dataframe;
+
+proc reg data = './cars.txt';
+model EngineSize = Weight;
+run;
+
+proc print data = dataframe;
+
+
+proc report data='./cars.txt';
+columns Origin Make Type MSRP Invoice;
+run;
+
+
+proc report data='./cars.txt';
+columns ('car' ('car1' Origin Make Type) ('car2' MSRP Invoice));
+run;
+
+
+proc report data='./cars.txt';
+columns Origin Make Type MSRP Invoice;
+define Origin/group;
+run;
+
+proc report data='./cars.txt';
+columns Origin Type MSRP Invoice;
+define Origin/group;
+define Type/group;
+rbreak after/summarize;
+run;
+
+
+proc report data='./cars.txt';
+columns Origin Type;
+define Origin/group;
+define Type/across;
+run;
+
+proc report data='./cars.txt';
+columns Origin Type,(MSRP Invoice);
+define Origin/group;
+define Type/across;
+run;
+
+proc report data='./cars.txt';
+columns Origin Make Type,(MSRP Invoice);
+define Origin/group;
+define Type/across;
+define MSRP/mean;
+define Invoice/sum;
+run;
+
+proc report data='./cars.txt';
+columns Origin Make Type,(MSRP Invoice);
+define Origin/group;
+define Make/group;
+define Type/across;
+define MSRP/mean;
+define Invoice/mean;
+run;
+
+proc report data='./cars.txt';
+columns Origin Make Type,(MSRP Invoice);
+define Origin/group;
+define Type/across;
+define MSRP/sum;
+define Invoice/mean;
+where UPCASE(ORIGIN) IN ('ASIA','EUROPE');
+run;
+
+proc report data='./cars.txt';
+columns Origin Make Type,(MSRP Invoice);
+define Origin/group;
+define Type/across;
+define MSRP/mean;
+define Invoice/sum;
+BREAK AFTER Origin/SUMMARIZE
+where UPCASE(ORIGIN) IN ('ASIA','EUROPE');
+run;
+
+proc report data='./cars.txt';
+columns Origin Make Type MSRP Invoice;
+define Origin/group;
+define MSRP/analysis sum;
+where UPCASE(ORIGIN) IN ('ASIA','EUROPE');
+run;
+
+proc univariate data= './cars.txt';
+   var MSRP Invoice;
+   class Origin Make;
+run;
+
+proc univariate data= './cars.txt';
+   var MSRP ;
+run;
+
+proc append base=material_master data=monthly_txn;
+run;
+proc print data=material_master;
+run;
+
+proc import datafile='./cars.txt' out=cars_data replace;
+run;
+
+proc format;
+value $org Asia='ASIA'
+			Europe='EUROPE'
+			other='AMERICA';
+run;
+
+proc print data=cars_data;
+format Origin $org.;
+run;
+
+proc import datafile='./cars.txt' out=cars_data replace;
+run;
+
+proc format;
+value $org Asia-Europe='ASIA&EUROPE'
+			other='AMERICA';
+run;
+
+proc print data=cars_data;
+format Origin $org.;
+run;
+
+
+proc import datafile='./cars.txt' out=cars_data replace;
+run;
+
+proc format;
+value org 1-4='Large';
+run;
+
+proc print data=cars_data;
+format EngineSize org.;
+run;
+
+
+proc import datafile='./cars.txt' out=cars_data replace;
+run;
+
+proc format;
+picture msrpcol low-35000='lower'
+				35001-50000='medium'
+				other='high';
+run;
+
+proc print data=cars_data;
+format MSRP msrpcol.;
+run;
+
+
+proc import datafile='./cars.txt' out=cars_data replace;
+run;
+
+proc format;
+picture msrpcol low-35000='k000' (prefix='$')
+				35001-50000='0000000000' (prefix='$' fill='*')
+				other='90k12345' (prefix='$' fill='*');
+run;
+
+proc print data=cars_data;
+format MSRP msrpcol.;
+run;
+
+proc import datafile='./cars.txt' out=cars_data replace;
+run;
+
+
+proc format;
+picture invoicecol low-35000='000,000' (prefix='$' mult=2)
+				35001-50000='0000000000' (prefix='$' fill='*')
+				other='0.0M';
+run;
+
+proc print data=cars_data;
+format Invoice invoicecol.;
+run;
+
+data person;
+   infile datalines delimiter=',';
+   input name $ dept $;
+   datalines;
+John,Sales
+Mary,Acctng;
+run;
+
+data club2;
+input IdNumber 1-4 Name $6-23;
+input Team $ 1-6;
+input StartWeight 1-3 EndWeight 5-7;
+datalines;
+1023 David Shaw
+red
+189 165
+1049 Amelia Serrano
+yellow
+145 124
+1219 Alan Nance
+red
+210 192
+1246 Ravi Sinha
+yellow
+194 177;
+run;
+
+data body_fat;
+input Gender $ PercentFat @@;
+datalines;
+m 13.3 f 22
+m 22 f 23.2
+m 16 m 12
+;
+run;
+
+data students;
+input ID $ Name $ AmtPaid Course $ New;
+datalines;
+78374 Adam 350.00 597 1
+75638 Michele 525.00 221 1
+78634 Jacob 625.00 221 0
+28746 . . 597 2
+58743 Zina 250.00 435 0
+45378 Amy 250.00 435 0
+87463 Angela 525.00 221 1
+46732 Trevor 450.00 597 0
+23867 Michael 450.00 597 0
+;
+run;
+
+
+
+data merge_df1;
+merge data1 data2;
+run;
+
+data merge_df2;
+merge data1 data2 data3;
+by column1;
+run;
+
+data update_df;
+update master transaction;
+by column1;
+run;
+
+data modify_df;
+modify master transaction;
+by column1;
+run;
+
+proc sort data=material_master;
+    by Material_ID;
+run;
+
+proc sort data=material_master;
+    by Material_ID Unit_Selling_Price;
+run;
+
+proc sort data=material_master nodupkey;
+    by Unit_Cost;
+run;
+
+proc sort data=material_master (keep=Material_ID) nodupkey out=out_df;
+    by Material_ID;
+run;
+
+proc sort data=material_master;
+    by Material_ID descending Unit_Selling_Price Unit_Cost;
+run;
+
+
+data sample;
+set salary;
+rename Quality=QTY name=Name;
+run;
+
+data sample;
+set salary;
+where country='USA' and amount>600;
+run;
+
+data sample;
+set salary ;
+where country='USA' and amount<600;
+run;
+
+data sample;
+set salary ;
+where country='USA';
+run;
+
+data sample;
+set salary(where=(country='USA'));
+run;
+
+data sample(keep = Country Name amount);
+set salary;
+run;
+
+
+data sample;
+set salary;
+keep country name amount;
+run;
+
+data sample(drop = Country Name amount);
+set salary;
+run;
+
+data sample;
+set salary;
+drop country name amount;
+run;
+
+
+data linenumber;
+set salary;
+if _N_ >=10 and _N_ <20;
+run;
+
+data obs;
+set salary(obs = 15);
+run;
+
+data concatenate;
+set salary;
+new_var = "The" || name || "costs: $" || amount;
+run;
+
+data test;
+set salary;
+new_var = catx("/", name, country,);
+run;
+
+
+data test;
+set salary;
+new_var = catt("The", name, "costs: $", amount);
+run;
+
+data test;
+set salary;
+new_var = cats("The", name, "costs: $", amount);
+run;
+
+
+data sample;
+x='12345678A901 B 23456789012 c';
+y=compress(x, 'ABCDc', 'k');
+put y=;
+run;
+proc print data=sample;run;
+
+
+data sample;
+x='12345678A901 B 23456789012 c';
+y=compress(x, 'ABCDc', 'l');
+put y=;
+run;
+proc print data=sample;run;
+
+data test;
+source='123-4567-8901 eA 234-5678-9012 i';
+y=compress(source,'aeiou');
+put y=;
+run;
+proc print data=test;run;
+
+data test;
+source='793493+--abc';
+y=compress(source, '+a', 'd');
+put y=;
+run;
+proc print data=test;run;
+
+
+data sample;
+string='sas.com';
+exists=find(string,'.com');
+run;
+proc print data=sample;run;
+
+
+data sample;
+text='Believe and act as if it were impossible to pail.;
+finaltext=tranwrd(text, 'pail', 'fail');
+put finaltext=;
+run;
+proc print data=sample;run;
+
+
+
+proc import datafile='./cars.txt' out=cars_data;
+run;
+proc means data=cars_data n sum;
+var MSRP Invoice;
+run;
+
+proc import datafile='./cars.txt' out=cars_data;
+run;
+proc means data=cars_data n sum;
+class Origin;
+var MSRP Invoice;
+run;
+
+proc import datafile='./cars.txt' out=cars_data;
+run;
+proc means data=cars_data n sum;
+class Origin DriveTrain/descend;
+var MSRP Invoice;
+run;
+
+proc import datafile='./cars.txt' out=cars_data;
+run;
+proc means data=cars_data n sum;
+class Origin DriveTrain;
+ways 1;
+var MSRP Invoice;
+output out=testing;
+run;
+proc print data=testing;
+run;
+
+proc import datafile='./cars.txt' out=cars_data;
+run;
+proc means data=cars_data noprint;
+class Origin DriveTrain;
+var MSRP Invoice;
+output out=testing sum=sum n=count;
+run;
+proc print data=testing;
+run;
+
+
+proc import datafile='./cars.txt' out=cars_data;
+run;
+proc means data=cars_data noprint;
+class Origin DriveTrain;
+var MSRP Invoice;
+output out=testing sum(MSRP)= mean(Invoice)=/autoname;
+run;
+proc print data=testing;
+run;
+
+proc import datafile='./cars.txt' out=cars_data;
+run;
+proc means data=cars_data nway noprint;
+class Origin DriveTrain;
+var MSRP Invoice;
+output out=testing sum(MSRP)= mean(Invoice)=/autoname;
+run;
+proc print data=testing;
+run;
+
+
+proc import datafile='./cars.txt' out=cars_data;
+run;
+proc means data=cars_data nway;
+class Origin DriveTrain;
+var MSRP Invoice;
+by Make;
+run;
+
+proc import datafile='./cars.txt' out=cars_data;
+run;
+proc means data=cars_data noprint;
+class Origin DriveTrain;
+var MSRP Invoice;
+by Make;
+output out=testing sum(MSRP)= mean(Invoice)=/autoname;
+run;
+proc print data=testing;
+run;
+
+
+proc import datafile='./cars.txt' out=cars_data;
+run;
+proc means data=cars_data noprint;
+class Origin;
+var MSRP Invoice;
+output out=testing (drop=_FREQ_ rename=(_TYPE_=tt) where=(tt=1)) sum(MSRP)= mean(Invoice)=/autoname;
+run;
+proc print data=testing;
+run;
+
+
+data test;
+set salary;
+call symput('agenum',12);
+where age = &agenum.;
+run;
+
+
+data test;
+x=1;
+call symput('num1',x);
+run;
+proc print data=dataframe;
+run;
+
+data char1;
+input c $;
+call symput('char1',c);
+datalines;
+x
+;run;
+proc print data=dataframe;
+run;
+
+data x;
+x='December';
+call symput('var',x);
+run;
+proc print data=dataframe;
+run;
+
+
+PROC TRANSPOSE DATA=material_master out=transposed_material_master;
+RUN;
+proc print data=transposed_material_master;
+run;
+
+proc transpose data=score out=idnumber name=Test;
+prefix=sn;
+id StudentID;
+idlabel Student;
+run;
+proc print data=dataframe;
+run;
+
+
+proc transpose data=score out=idnumber name=Test;
+prefix=sn;
+id StudentID;
+run;
+proc print data=dataframe;
+run;
+
+proc transpose data=material_master out=idnumber name=Test;
+prefix=sn;
+idlabel Material_ID;
+run;
+proc print data=dataframe;
+run;
+
+proc transpose data=stocks out=close let;
+by Company;
+id Date;
+run;
+
+proc transpose data=data1 out=idnumber name=Test;
+prefix=sn;
+idlabel Unit_Cost;
+run;
+proc print data=dataframe;
+run;
+
+proc transpose data=data1 out=idnumber name=Test;
+prefix=sn;
+id Material_ID;
+idlabel Unit_Cost;
+run;
+proc print data=dataframe;
+run;
+
+
+proc transpose data=score out=df(rename=(col1=Measurement));
+var Weight1-Weight3;
+by Student Section;
+run;
+proc print data=df;
+run;
+
+%include './sas_include.txt';

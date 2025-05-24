@@ -1,0 +1,24 @@
+proc sort data=mcormapping;
+	by hierarchy mcorcat varname;
+run;
+
+proc sort data=newmcor2 nodup;
+by _all_;
+run;
+
+data _null_;
+	set newmcor2 end=last;
+	length newmcorcat $15.;
+	if last then do;
+	   newmcorcat=mcorcat;
+call symput('lstmcorcat', newmcorcat);
+	   end;
+run;
+
+proc sort data=&bencod._cs_update;
+by clamno lineno;
+
+data &bencod._costsplit_&year.(drop=limit);
+update &bencod._costsplit_&year. &bencod._cs_update;
+by clamno lineno;
+run;

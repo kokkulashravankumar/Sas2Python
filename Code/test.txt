@@ -1,0 +1,23 @@
+
+/*final sort order logic for rewrite*/
+proc sort data = csrinput7_&year.;
+	by membno edtdat negation clamno descending maxcopay lineno;
+run;
+
+
+proc sort data=finalsnf;
+by clamno lineno;
+run;
+
+data _null_;
+set yearcall;
+call execute('%spltlogic('||Year||');');
+run;
+
+proc append base=finalsnf data=finalsnf_&year. ;
+run;
+
+data &bencod._costsplit_&year.(drop=limit);
+update &bencod._costsplit_&year. &bencod._cs_update;
+by clamno lineno;
+run;

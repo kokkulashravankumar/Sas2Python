@@ -1,0 +1,51 @@
+/* File must be hierarchal order */
+proc sort data=newmcor2;								/* KS - 171281 - 09212009 */
+	by hierarchy mcorcat varname;						/* KS - 171281 - 09212009 */
+run;
+
+
+proc sort data=fldmcor nodupkey;
+	by varname;
+run;
+
+data totfields;
+set hldfld fldmcor;				/* KS - 202643 - 06282010 *//* cw #210588 #214630 #226194*/
+varname = klowcase(varname);
+rename varname=name;
+run;
+
+proc sort data=totfields nodupkey;
+by name;
+run;
+
+/* Capure all variables used in SVCLINES*/
+proc contents data=&libn1..svclines out=svclines noprint;
+run;
+
+/* Capure all variables used in CLAIMS*/
+proc contents data=&libn1..claims out=claims noprint;
+run;
+
+data dateflds;
+	set svclines claims;
+	if format = 'DATE'; /*SAS2AWS2: Updated 'MMDDYY' as 'DATE'*/
+	keep name;
+run;
+
+/* DEDUPE the DATE FIELDS */
+proc sort data=dateflds nodupkey;
+by name;
+run;
+
+/* DEDUPE the NUMERIC FIELDS */
+proc sort data=numflds nodupkey;
+by name;
+run;
+
+
+proc sort data=bencodshort;by grp gridbencod;run;
+
+/*TRANSPOSE THE BENEFIT GRID INTO ONE ARRAY PER BENEFIT GROUP */
+proc sort data=bencodshort;
+	by gridbenpkg effdat gridbencod untsmx ;	/*ALM 5682 - BC Added gridbenpkg*/
+run;
